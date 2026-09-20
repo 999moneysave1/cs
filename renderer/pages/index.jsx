@@ -11,7 +11,7 @@ export default function Home() {
   const [isManualLocked, setIsManualLocked] = useState(false)
   const [cooldownSeconds, setCooldownSeconds] = useState(0)
   const [readMode, setReadMode] = useState('points') // 'points' | 'full'
-  const [selectedVoice, setSelectedVoice] = useState('hi-IN-MadhurNeural') // 'hi-IN-MadhurNeural' | 'hi-IN-SwaraNeural'
+  const [selectedVoice, setSelectedVoice] = useState('hi-IN-MadhurNeural')
   const [inputText, setInputText] = useState('')
   const [transcript, setTranscript] = useState('Listening live...')
   const [whisperText, setWhisperText] = useState('Ear whisper ready.')
@@ -19,10 +19,6 @@ export default function Home() {
   const [bulletPoints, setBulletPoints] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [activeWordIndex, setActiveWordIndex] = useState(-1)
-
-  // इन-ऐप स्टेल्थ कर्सर
-  const [mousePos, setMousePos] = useState({ x: -100, y: -100 })
-  const [isInside, setIsInside] = useState(false)
 
   const contentBoxRef = useRef(null)
   const audioPlayerRef = useRef(null)
@@ -46,7 +42,7 @@ export default function Home() {
   useEffect(() => { cooldownSecondsRef.current = cooldownSeconds }, [cooldownSeconds])
   useEffect(() => { selectedVoiceRef.current = selectedVoice }, [selectedVoice])
 
-  // सर्वर को पहले से जगाकर रखना
+  // बैकएंड को जगाना
   useEffect(() => {
     fetch(TTS_API_BASE).catch(() => {})
   }, [])
@@ -118,7 +114,6 @@ export default function Home() {
     }
   }
 
-  // किसी भी पॉइंट पर सीधे क्लिक करके सुनना
   const playFromSpecificSection = (globalStartIndex) => {
     if (globalStartIndex >= 0 && globalStartIndex < allWordsRef.current.length) {
       const remainingWords = allWordsRef.current.slice(globalStartIndex)
@@ -148,7 +143,6 @@ export default function Home() {
     }
   }
 
-  // वॉयस टॉगल (Madhur ↔ Swara)
   const toggleVoiceSelection = () => {
     const nextVoice = selectedVoice === 'hi-IN-MadhurNeural' ? 'hi-IN-SwaraNeural' : 'hi-IN-MadhurNeural'
     setSelectedVoice(nextVoice)
@@ -159,7 +153,7 @@ export default function Home() {
     }
   }
 
-  // 4. Groq AI Calling (सीधे ब्राउज़र से)
+  // 4. Groq AI Calling
   const askGroqAI = async (questionText) => {
     const cleanQ = questionText.trim()
     if (!cleanQ || cleanQ.length < 3 || cleanQ === lastProcessedTextRef.current) return
@@ -252,7 +246,7 @@ JSON ONLY:
     }
   }
 
-  // 5. स्पीच रिकग्निशन लिसनर (HTTPS पर ऑटो-कंटिन्यूअस)
+  // 5. स्पीच रिकग्निशन लिसनर (HTTPS Vercel पर डायरेक्ट)
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) return
@@ -286,14 +280,13 @@ JSON ONLY:
     }
 
     recognition.onend = () => { try { recognition.start() } catch (e) {} }
-    recognition.onerror = () => { setTimeout(() => { try { recognition.start() } catch (e) {} }, 300) }
+    recognition.onerror = () => { setTimeout(() => { try { recognition.start() } catch (e) {} }, 500) }
 
     const startSafely = () => { try { recognition.start() } catch (e) {} }
     startSafely()
     window.addEventListener('click', startSafely, { once: true })
   }, [])
 
-  // 6. ओवरराइड और शॉर्टकट्स
   const handleOverrideToggle = () => {
     let newLock = !isManualLocked
     if (cooldownSeconds > 0) {
@@ -342,226 +335,204 @@ JSON ONLY:
   let wordOffsetCounter = whisperWords.length
 
   return (
-    <div
-      onMouseMove={(e) => { setMousePos({ x: e.clientX, y: e.clientY }); if (!isInside) setIsInside(true); }}
-      onMouseEnter={() => setIsInside(true)}
-      onMouseLeave={() => setIsInside(false)}
-      className="flex flex-col h-screen w-screen select-none bg-slate-950 text-slate-100 rounded-xl border border-slate-800/80 shadow-2xl overflow-hidden font-sans cursor-none [&_*]:!cursor-none relative"
-    >
-      {/* इन-ऐप स्टेल्थ कर्सर */}
-      {isInside && (
-        <div
-          className="fixed w-3 h-3 bg-emerald-400 rounded-full pointer-events-none z-50 shadow-[0_0_10px_rgba(52,211,153,0.9)] -translate-x-1/2 -translate-y-1/2 border border-slate-950/70"
-          style={{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }}
-        />
-      )}
-
-      {/* हेडर */}
-      <div className="h-7 bg-slate-900/95 px-2.5 flex items-center justify-between border-b border-slate-800/70 cursor-none !cursor-none">
-        <div className="flex items-center space-x-1.5">
-          <div className={`w-2 h-2 rounded-full ${
-            isManualLocked ? 'bg-rose-500' :
-            cooldownSeconds > 0 ? 'bg-amber-400 animate-pulse' :
-            isLoading ? 'bg-indigo-400 animate-ping' :
-            'bg-emerald-400'
-          }`} />
-          <span className="text-[10px] font-mono text-slate-400">
-            {isManualLocked ? 'Locked' :
-             cooldownSeconds > 0 ? `${cooldownSeconds}s` :
-             isLoading ? 'Thinking...' : 'Live'}
-          </span>
-        </div>
-
-        <div className="flex items-center space-x-1 cursor-none">
-          {/* ⏩ स्किप / फ़ॉरवर्ड बटन */}
-          <button
-            onClick={skipToNextPoint}
-            className="text-xs px-1.5 py-0.5 rounded font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30"
-            title="Skip / Forward to next point (Alt+Shift+Right)"
-          >
-            ⏩ Next
-          </button>
-
-          {/* 🔒 / 🔓 बटन */}
-          <button
-            onClick={handleOverrideToggle}
-            className={`text-xs px-1.5 py-0.5 rounded font-mono transition flex items-center space-x-0.5 ${
-              cooldownSeconds > 0
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : isManualLocked
-                ? 'bg-rose-600/30 text-rose-300 border border-rose-500/40'
-                : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
-            }`}
-            title="Toggle Lock (Space / Alt+M)"
-          >
-            <span>{isManualLocked ? '🔒' : '🔓'}</span>
-            {cooldownSeconds > 0 && <span className="text-[10px] font-mono">{cooldownSeconds}s</span>}
-          </button>
-
-          {/* 🎙️ वॉयस टॉगल */}
-          <button
-            onClick={toggleVoiceSelection}
-            className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30"
-            title="Switch Voice"
-          >
-            {selectedVoice.includes('Madhur') ? '🎙️ Madhur' : '🎙️ Swara'}
-          </button>
-
-          {/* रीडिंग मोड बटन */}
-          <button
-            onClick={() => setReadMode(readMode === 'points' ? 'full' : 'points')}
-            className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-            title="Toggle Reading Mode"
-          >
-            {readMode === 'points' ? '📖 Points' : '📖 Full'}
-          </button>
-
-          {/* ऑडियो प्ले / पॉज़ */}
-          <button
-            onClick={togglePlayPauseAudio}
-            className={`text-xs px-1.5 py-0.5 rounded font-mono transition ${
-              isVoicePaused
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'bg-slate-800 text-slate-300 hover:text-white'
-            }`}
-            title={isVoicePaused ? 'Play Audio' : 'Pause Audio'}
-          >
-            {isVoicePaused ? '▶' : '⏸'}
-          </button>
-
-          {/* कोड इनपुट टॉगल (+ / -) */}
-          <button
-            onClick={() => setShowInput(!showInput)}
-            className="text-slate-400 hover:text-white text-xs px-1 py-0.5 rounded hover:bg-slate-800 font-mono"
-            title="Toggle Input Box"
-          >
-            {showInput ? '−' : '+'}
-          </button>
-        </div>
-      </div>
-
-      {/* मुख्य बॉडी */}
-      <div className="flex-1 p-2 overflow-hidden flex flex-col space-y-1.5">
-
-        {/* 🎧 व्हिस्पर बार */}
-        <div
-          onClick={() => playFromSpecificSection(0)}
-          className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1 flex items-start space-x-1.5 cursor-pointer hover:bg-amber-500/15 transition"
-          title="Click to replay from start"
-        >
-          <span className="text-xs pt-0.5">🎧</span>
-          <p className="text-xs leading-relaxed font-medium flex-1">
-            {whisperWords.map((word, i) => (
-              <span
-                key={i}
-                className={`transition-colors duration-150 mr-1 inline-block ${
-                  i === activeWordIndex
-                    ? 'text-amber-300 font-bold bg-amber-400/25 px-1 rounded shadow-sm'
-                    : 'text-amber-200/90'
-                }`}
-              >
-                {word}
-              </span>
-            ))}
-          </p>
-        </div>
-
-        {/* उत्तर बॉक्स */}
-        <div
-          ref={contentBoxRef}
-          className="flex-1 bg-slate-900/40 border border-slate-800/80 rounded-lg p-2 overflow-y-auto select-text font-mono text-xs space-y-1.5"
-        >
-          {/* बुलेट पॉइंट्स */}
-          {bulletPoints.length > 0 && (
-            <div className="space-y-1">
-              {bulletPoints.map((pt, idx) => {
-                const ptWords = pt.split(/\s+/).filter(w => w.trim().length > 0)
-                const thisPtStartIdx = wordOffsetCounter
-                wordOffsetCounter += ptWords.length
-
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => playFromSpecificSection(thisPtStartIdx)}
-                    className="flex items-start space-x-1.5 cursor-pointer hover:bg-slate-800/30 p-0.5 rounded transition"
-                    title="Click point to listen from here"
-                  >
-                    <span className="text-emerald-400 font-bold">•</span>
-                    <span className="leading-relaxed flex-1">
-                      {ptWords.map((w, wIdx) => {
-                        const globalWordIdx = thisPtStartIdx + wIdx
-                        const isSpeaking = globalWordIdx === activeWordIndex
-                        return (
-                          <span
-                            key={wIdx}
-                            className={`mr-1 inline-block transition-colors duration-150 ${
-                              isSpeaking
-                                ? 'text-amber-300 font-bold bg-amber-400/25 px-1 rounded shadow-sm'
-                                : (idx % 2 === 0 ? 'text-emerald-300 font-medium' : 'text-slate-100')
-                            }`}
-                          >
-                            {w}
-                          </span>
-                        )
-                      })}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* डिटेल्ड एक्सप्लेनेशन */}
-          {detailedAnswer && (
-            <div
-              onClick={() => playFromSpecificSection(wordOffsetCounter)}
-              className="text-slate-300 pt-1 border-t border-slate-800/60 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-slate-800/30 p-0.5 rounded transition"
-              title="Click explanation to listen from here"
-            >
-              {detailedAnswer.split(/\s+/).filter(w => w.trim().length > 0).map((w, wIdx) => {
-                const globalWordIdx = wordOffsetCounter + wIdx
-                const isSpeaking = globalWordIdx === activeWordIndex
-                return (
-                  <span
-                    key={wIdx}
-                    className={`mr-1 inline-block transition-colors duration-150 ${
-                      isSpeaking
-                        ? 'text-amber-300 font-bold bg-amber-400/25 px-1 rounded shadow-sm'
-                        : 'text-slate-300'
-                    }`}
-                  >
-                    {w}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* कोड इनपुट बॉक्स */}
-        {showInput && (
-          <div className="space-y-1">
-            <textarea
-              rows={2}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Paste question or code & Enter..."
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500 font-mono resize-none"
-            />
+    <div className="flex justify-center items-center min-h-screen bg-slate-900 p-4">
+      <div className="flex flex-col h-[600px] w-[420px] select-none bg-slate-950 text-slate-100 rounded-xl border border-slate-800/80 shadow-2xl overflow-hidden font-sans relative">
+        {/* हेडर */}
+        <div className="h-7 bg-slate-900/95 px-2.5 flex items-center justify-between border-b border-slate-800/70">
+          <div className="flex items-center space-x-1.5">
+            <div className={`w-2 h-2 rounded-full ${
+              isManualLocked ? 'bg-rose-500' :
+              cooldownSeconds > 0 ? 'bg-amber-400 animate-pulse' :
+              isLoading ? 'bg-indigo-400 animate-ping' :
+              'bg-emerald-400'
+            }`} />
+            <span className="text-[10px] font-mono text-slate-400">
+              {isManualLocked ? 'Locked' :
+               cooldownSeconds > 0 ? `${cooldownSeconds}s` :
+               isLoading ? 'Thinking...' : 'Live'}
+            </span>
           </div>
-        )}
 
-        {/* प्रश्न बार */}
-        <div className="bg-slate-900/50 border border-slate-800/60 rounded-lg px-2.5 py-0.5 flex items-center space-x-1.5 text-[11px]">
-          <span className="font-bold text-indigo-400 font-mono">Q:</span>
-          <p className="text-slate-300 italic truncate flex-1">
-            {transcript}
-          </p>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={skipToNextPoint}
+              className="text-xs px-1.5 py-0.5 rounded font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30"
+              title="Skip / Forward to next point (Alt+Shift+Right)"
+            >
+              ⏩ Next
+            </button>
+
+            <button
+              onClick={handleOverrideToggle}
+              className={`text-xs px-1.5 py-0.5 rounded font-mono transition flex items-center space-x-0.5 ${
+                cooldownSeconds > 0
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : isManualLocked
+                  ? 'bg-rose-600/30 text-rose-300 border border-rose-500/40'
+                  : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+              }`}
+              title="Toggle Lock (Space / Alt+M)"
+            >
+              <span>{isManualLocked ? '🔒' : '🔓'}</span>
+              {cooldownSeconds > 0 && <span className="text-[10px] font-mono">{cooldownSeconds}s</span>}
+            </button>
+
+            <button
+              onClick={toggleVoiceSelection}
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30"
+              title="Switch Voice"
+            >
+              {selectedVoice.includes('Madhur') ? '🎙️ Madhur' : '🎙️ Swara'}
+            </button>
+
+            <button
+              onClick={() => setReadMode(readMode === 'points' ? 'full' : 'points')}
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+              title="Toggle Reading Mode"
+            >
+              {readMode === 'points' ? '📖 Points' : '📖 Full'}
+            </button>
+
+            <button
+              onClick={togglePlayPauseAudio}
+              className={`text-xs px-1.5 py-0.5 rounded font-mono transition ${
+                isVoicePaused
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+              title={isVoicePaused ? 'Play Audio' : 'Pause Audio'}
+            >
+              {isVoicePaused ? '▶' : '⏸'}
+            </button>
+
+            <button
+              onClick={() => setShowInput(!showInput)}
+              className="text-slate-400 hover:text-white text-xs px-1 py-0.5 rounded hover:bg-slate-800 font-mono"
+              title="Toggle Input Box"
+            >
+              {showInput ? '−' : '+'}
+            </button>
+          </div>
         </div>
 
-      </div>
+        {/* मुख्य बॉडी */}
+        <div className="flex-1 p-2 overflow-hidden flex flex-col space-y-1.5">
+          {/* 🎧 व्हिस्पर बार */}
+          <div
+            onClick={() => playFromSpecificSection(0)}
+            className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1 flex items-start space-x-1.5 cursor-pointer hover:bg-amber-500/15 transition"
+            title="Click to replay from start"
+          >
+            <span className="text-xs pt-0.5">🎧</span>
+            <p className="text-xs leading-relaxed font-medium flex-1">
+              {whisperWords.map((word, i) => (
+                <span
+                  key={i}
+                  className={`transition-colors duration-150 mr-1 inline-block ${
+                    i === activeWordIndex
+                      ? 'text-amber-300 font-bold bg-amber-400/25 px-1 rounded shadow-sm'
+                      : 'text-amber-200/90'
+                  }`}
+                >
+                  {word}
+                </span>
+              ))}
+            </p>
+          </div>
 
+          {/* उत्तर बॉक्स */}
+          <div
+            ref={contentBoxRef}
+            className="flex-1 bg-slate-900/40 border border-slate-800/80 rounded-lg p-2 overflow-y-auto select-text font-mono text-xs space-y-1.5"
+          >
+            {bulletPoints.length > 0 && (
+              <div className="space-y-1">
+                {bulletPoints.map((pt, idx) => {
+                  const ptWords = pt.split(/\s+/).filter(w => w.trim().length > 0)
+                  const thisPtStartIdx = wordOffsetCounter
+                  wordOffsetCounter += ptWords.length
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => playFromSpecificSection(thisPtStartIdx)}
+                      className="flex items-start space-x-1.5 cursor-pointer hover:bg-slate-800/30 p-0.5 rounded transition"
+                      title="Click point to listen from here"
+                    >
+                      <span className="text-emerald-400 font-bold">•</span>
+                      <span className="leading-relaxed flex-1">
+                        {ptWords.map((w, wIdx) => {
+                          const globalWordIdx = thisPtStartIdx + wIdx
+                          const isSpeaking = globalWordIdx === activeWordIndex
+                          return (
+                            <span
+                              key={wIdx}
+                              className={`mr-1 inline-block transition-colors duration-150 ${
+                                isSpeaking
+                                  ? 'text-amber-300 font-bold bg-amber-400/25 px-1 rounded shadow-sm'
+                                  : (idx % 2 === 0 ? 'text-emerald-300 font-medium' : 'text-slate-100')
+                              }`}
+                            >
+                              {w}
+                            </span>
+                          )
+                        })}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {detailedAnswer && (
+              <div
+                onClick={() => playFromSpecificSection(wordOffsetCounter)}
+                className="text-slate-300 pt-1 border-t border-slate-800/60 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-slate-800/30 p-0.5 rounded transition"
+                title="Click explanation to listen from here"
+              >
+                {detailedAnswer.split(/\s+/).filter(w => w.trim().length > 0).map((w, wIdx) => {
+                  const globalWordIdx = wordOffsetCounter + wIdx
+                  const isSpeaking = globalWordIdx === activeWordIndex
+                  return (
+                    <span
+                      key={wIdx}
+                      className={`mr-1 inline-block transition-colors duration-150 ${
+                        isSpeaking
+                          ? 'text-amber-300 font-bold bg-amber-400/25 px-1 rounded shadow-sm'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      {w}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* इनपुट बॉक्स */}
+          {showInput && (
+            <div className="space-y-1">
+              <textarea
+                rows={2}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Paste question or code & Enter..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500 font-mono resize-none"
+              />
+            </div>
+          )}
+
+          {/* प्रश्न बार */}
+          <div className="bg-slate-900/50 border border-slate-800/60 rounded-lg px-2.5 py-0.5 flex items-center space-x-1.5 text-[11px]">
+            <span className="font-bold text-indigo-400 font-mono">Q:</span>
+            <p className="text-slate-300 italic truncate flex-1">
+              {transcript}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
