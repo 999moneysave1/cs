@@ -1,6 +1,6 @@
 {
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/renderer/$1" }
-  ]
+  "buildCommand": "cd renderer && npm run build",
+  "outputDirectory": "renderer/.next",
+  "installCommand": "cd renderer && npm install",
+  "framework": "nextjs"
 }
