@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build --prefix renderer",
+  "buildCommand": "next build renderer",
   "outputDirectory": "renderer/.next",
   "framework": "nextjs"
 }
