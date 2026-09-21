@@ -1,6 +1,9 @@
 {
-  "buildCommand": "cd renderer && npm run build",
-  "outputDirectory": "renderer/.next",
-  "installCommand": "cd renderer && npm install",
-  "framework": "nextjs"
+  "cleanUrls": true,
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/renderer/$1"
+    }
+  ]
 }
