@@ -1,5 +1,5 @@
 {
-  "buildCommand": "next build renderer",
-  "outputDirectory": "renderer/.next",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "framework": "nextjs"
 }
