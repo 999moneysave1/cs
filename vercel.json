@@ -1,9 +1,5 @@
 {
-  "cleanUrls": true,
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/renderer/$1"
-    }
-  ]
+  "buildCommand": "npm run build --prefix renderer",
+  "outputDirectory": "renderer/.next",
+  "framework": "nextjs"
 }
